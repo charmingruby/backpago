@@ -19,7 +19,7 @@ func New(qt QueueType, cfg any) (q *Queue, err error) {
 	switch qt {
 	case RabbitMQ:
 		if rt.Name() != "RabbitMQConfig" {
-			return nil, fmt.Errorf("config need to be of type RabbitMQConfig")
+			return nil, fmt.Errorf("config need's to be of type RabbitMQConfig")
 		}
 
 		conn, err := newRabbitConn(cfg.(RabbitMQConfig))
@@ -29,7 +29,7 @@ func New(qt QueueType, cfg any) (q *Queue, err error) {
 
 		q.qc = conn
 	default:
-		log.Fatal("type not implemented")
+		log.Fatal("queue type not implemented")
 	}
 
 	return
