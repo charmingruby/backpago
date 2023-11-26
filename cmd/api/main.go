@@ -8,7 +8,6 @@ import (
 )
 
 func main() {
-
 	configs.LoadConfigs()
 
 	_, err := database.NewConnection()
