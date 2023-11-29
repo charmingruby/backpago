@@ -54,9 +54,31 @@ func (as *awsSession) Download(src, dst string) (file *os.File, err error) {
 }
 
 func (as *awsSession) Upload(file io.Reader, key string) error {
-	return nil
+	uploader := s3manager.NewUploader(as.sess)
+
+	_, err := uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(as.bucketUpload),
+		Key:    aws.String(key),
+		Body:   file,
+	})
+
+	return err
 }
 
 func (as *awsSession) Delete(key string) error {
-	return nil
+	svc := s3.New(as.sess)
+
+	_, err := svc.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: aws.String(as.bucketDownload),
+		Key:    aws.String(key),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return svc.WaitUntilObjectNotExists(&s3.HeadObjectInput{
+		Bucket: aws.String(as.bucketDownload),
+		Key:    aws.String(key),
+	})
 }
