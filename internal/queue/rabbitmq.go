@@ -10,7 +10,7 @@ import (
 type RabbitMQConfig struct {
 	URL       string
 	TopicName string
-	TimeOut   time.Time
+	TimeOut   time.Duration
 }
 
 func newRabbitConn(cfg RabbitMQConfig) (rc *RabbitConnection, err error) {
@@ -40,7 +40,7 @@ func (rc *RabbitConnection) Publish(msg []byte) error {
 		Body:         msg,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), rc.cfg.TimeOut)
 
 	defer cancel()
 
