@@ -18,13 +18,11 @@ func (h *handler) Delete(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = deleteFiles(h.db, int64(id))
+	err = deleteFolderContent(h.db, int64(id))
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	// list folders
 
 	err = Delete(h.db, int64(id))
 	if err != nil {
@@ -34,6 +32,48 @@ func (h *handler) Delete(rw http.ResponseWriter, r *http.Request) {
 
 	rw.Header().Add("Content-Type", "application/json")
 
+}
+
+func deleteFolderContent(db *sql.DB, folderID int64) error {
+	err := deleteFiles(db, folderID)
+	if err != nil {
+		return err
+	}
+
+	return deleteSubfolders(db, folderID)
+}
+
+func deleteSubfolders(db *sql.DB, folderID int64) error {
+	subfolders, err := getSubFolders(db, folderID)
+	if err != nil {
+		return err
+	}
+
+	removedFolders := make([]Folder, 0, len(subfolders))
+
+	for _, sf := range subfolders {
+		err := Delete(db, sf.Id)
+		if err != nil {
+			break
+		}
+
+		err = deleteFolderContent(db, sf.Id)
+		if err != nil {
+			Update(db, sf.Id, &sf)
+			break
+		}
+
+		removedFolders = append(removedFolders, sf)
+	}
+
+	if len(subfolders) != len(removedFolders) {
+		for _, rf := range removedFolders {
+			Update(db, rf.Id, &rf)
+
+		}
+	}
+
+	return nil
 }
 
 func deleteFiles(db *sql.DB, folderID int64) error {
