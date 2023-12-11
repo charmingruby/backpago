@@ -4,33 +4,22 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/charmingruby/backpago/internal/files"
-	"github.com/go-chi/chi/v5"
 )
 
-func (h *handler) Get(rw http.ResponseWriter, r *http.Request) {
-	folderID, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
-		return
-	}
+func (h *handler) List(rw http.ResponseWriter, r *http.Request) {
 
-	f, err := GetFolder(h.db, int64(folderID))
-	if err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	c, err := GetFolderContent(h.db, int64(folderID))
+	c, err := GetRootFolderContent(h.db)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	fc := FolderContent{
-		Folder:  *f,
+		Folder: Folder{
+			Name: "root",
+		},
 		Content: c,
 	}
 
@@ -39,31 +28,10 @@ func (h *handler) Get(rw http.ResponseWriter, r *http.Request) {
 
 }
 
-func GetFolder(db *sql.DB, folderID int64) (*Folder, error) {
-	stmt := `select * from "folders" where id=$1`
+func getRootSubFolders(db *sql.DB) ([]Folder, error) {
+	stmt := `select * from "folders" where "parent_id" is null and "deleted"=false`
 
-	row := db.QueryRow(stmt, folderID)
-
-	var f Folder
-	err := row.Scan(
-		&f.Id,
-		&f.ParentId,
-		&f.Name,
-		&f.CreatedAt,
-		&f.ModifiedAt,
-		&f.Deleted,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &f, nil
-}
-
-func getSubFolders(db *sql.DB, folderID int64) ([]Folder, error) {
-	stmt := `select * from "folders" where "parent_id"=$1 and "deleted"=false`
-
-	rows, err := db.Query(stmt, folderID)
+	rows, err := db.Query(stmt)
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +58,8 @@ func getSubFolders(db *sql.DB, folderID int64) ([]Folder, error) {
 	return f, nil
 }
 
-func GetFolderContent(db *sql.DB, folderID int64) ([]FolderResource, error) {
-	subfolders, err := getSubFolders(db, folderID)
+func GetRootFolderContent(db *sql.DB) ([]FolderResource, error) {
+	subfolders, err := getRootSubFolders(db)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +77,7 @@ func GetFolderContent(db *sql.DB, folderID int64) ([]FolderResource, error) {
 		fr = append(fr, r)
 	}
 
-	folderFiles, err := files.List(db, folderID)
+	folderFiles, err := files.ListRoot(db)
 	if err != nil {
 		return nil, err
 	}
