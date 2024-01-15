@@ -79,14 +79,6 @@ func (u *User) Validate() error {
 		return ErrNameMaxLength
 	}
 
-	if len(u.Password) < 8 {
-		return ErrPasswordMinLength
-	}
-
-	if len(u.Password) > 16 {
-		return ErrPasswordMaxLength
-	}
-
 	if u.Password == fmt.Sprintf("%x", (md5.Sum([]byte("")))) {
 		return ErrPasswordRequired
 	}
