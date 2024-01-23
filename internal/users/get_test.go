@@ -8,7 +8,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
-func TestFetch(t *testing.T) {
+func TestGet(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Error(err.Error())
@@ -25,14 +25,13 @@ func TestFetch(t *testing.T) {
 		"deleted",
 		"last_login",
 	}).
-		AddRow(1, "john doe", "john_doe", "john1234", time.Now(), time.Now(), false, time.Now()).
-		AddRow(2, "john doe2", "john_doe2", "john1234", time.Now(), time.Now(), false, time.Now())
+		AddRow(1, "john doe", "john_doe", "john1234", time.Now(), time.Now(), false, time.Now())
 
-	mock.ExpectQuery(regexp.QuoteMeta(`select * from "users" where deleted = false`)).
-		WithArgs().
+	mock.ExpectQuery(regexp.QuoteMeta(`select * from "users" where id=$1`)).
+		WithArgs(1).
 		WillReturnRows(rows)
 
-	_, err = SelectAll(db)
+	_, err = GetById(db, 1)
 	if err != nil {
 		t.Error(err)
 	}
