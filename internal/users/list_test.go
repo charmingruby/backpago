@@ -8,7 +8,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
-func TestFetch(t *testing.T) {
+func TestSelectAll(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Error(err.Error())

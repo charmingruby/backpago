@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func (h *handler) Fetch(rw http.ResponseWriter, r *http.Request) {
+func (h *handler) List(rw http.ResponseWriter, r *http.Request) {
 
 	us, err := SelectAll(h.db)
 	if err != nil {
