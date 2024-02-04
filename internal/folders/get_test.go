@@ -1,4 +1,4 @@
-package files
+package folders
 
 import (
 	"regexp"
@@ -8,33 +8,28 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
-func TestList(t *testing.T) {
+func TestGetFolder(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Error(err.Error())
 	}
 	defer db.Close()
 
-	now := time.Now()
-
 	rows := sqlmock.NewRows([]string{
 		"id",
-		"folder_id",
-		"owner_id",
+		"parent_id",
 		"name",
-		"type",
-		"path",
 		"created_at",
 		"modified_at",
 		"deleted",
 	}).
-		AddRow(1, 1, 1, "photo", ".png", "./", now, now, false).
-		AddRow(2, 1, 1, "photo", ".png", "./", now, now, false)
+		AddRow(1, 2, "docs", time.Now(), time.Now(), false)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`select * from "files" where folder_id=$1 and deleted = false`)).
+	mock.ExpectQuery(regexp.QuoteMeta(`select * from "folders" where id=$1`)).
+		WithArgs(1).
 		WillReturnRows(rows)
 
-	_, err = List(db, 1)
+	_, err = GetFolder(db, 1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -45,33 +40,29 @@ func TestList(t *testing.T) {
 	}
 }
 
-func TestListRoot(t *testing.T) {
+func TestGetSubFolder(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Error(err.Error())
 	}
 	defer db.Close()
 
-	now := time.Now()
-
 	rows := sqlmock.NewRows([]string{
 		"id",
-		"folder_id",
-		"owner_id",
-		"type",
+		"parent_id",
 		"name",
-		"path",
 		"created_at",
 		"modified_at",
 		"deleted",
 	}).
-		AddRow(1, nil, 1, "photo", ".png", "./", now, now, false).
-		AddRow(2, nil, 1, "photo", ".png", "./", now, now, false)
+		AddRow(2, 3, "cvs", time.Now(), time.Now(), false).
+		AddRow(4, 3, "imgs", time.Now(), time.Now(), false)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`select * from "files" where folder_id is null and deleted = false`)).
+	mock.ExpectQuery(regexp.QuoteMeta(`select * from "folders" where "parent_id"=$1 and "deleted"=false`)).
+		WithArgs(1).
 		WillReturnRows(rows)
 
-	_, err = ListRoot(db)
+	_, err = getSubFolders(db, 1)
 	if err != nil {
 		t.Error(err)
 	}
