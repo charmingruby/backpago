@@ -16,11 +16,11 @@ import (
 )
 
 func main() {
-	// rabbitmq cfg
+	// rabbitmq config
 	qcfg := queue.RabbitMQConfig{
-		URL:       os.Getenv("RABBIT_URL"),
+		URL:       "amqp://" + os.Getenv("RABBIT_URL"),
 		TopicName: os.Getenv("RABBIT_TOPIC_NAME"),
-		TimeOut:   time.Second * 30,
+		Timeout:   time.Second * 30,
 	}
 
 	// create new queue
@@ -30,8 +30,8 @@ func main() {
 	}
 
 	// create channel to consume messages
-	c := make(chan queue.QueueDto)
-	qc.Consume(c)
+	c := make(chan queue.QueueDto, 1)
+	go qc.Consume(c)
 
 	// bucket config
 	bcfg := bucket.AwsConfig{
@@ -39,21 +39,29 @@ func main() {
 			Region:      aws.String(os.Getenv("AWS_REGION")),
 			Credentials: credentials.NewStaticCredentials(os.Getenv("AWS_KEY"), os.Getenv("AWS_SECRET"), ""),
 		},
-		BucketDownload: "backpago-raw",
-		BucketUpload:   "backpago-gzip",
+		BucketDownload: "aprenda-golang-drive-raw",
+		BucketUpload:   "aprenda-golang-drive-gzip",
 	}
 
-	// create a new bucket session
+	// create new bucket session
 	b, err := bucket.New(bucket.AwsProvider, bcfg)
 	if err != nil {
 		panic(err)
 	}
 
+	log.Println("waiting for messages")
 	for msg := range c {
-		src := fmt.Sprintf("%s/%s", msg.Path, msg.Filename)
 		dst := fmt.Sprintf("%d_%s", msg.ID, msg.Filename)
 
-		file, err := b.Download(src, dst)
+		log.Printf("Start working on %s\n", msg.Filename)
+
+		err := b.Download(msg.Path, dst)
+		if err != nil {
+			log.Printf("ERROR: %v", err)
+			continue
+		}
+
+		file, err := os.Open(dst)
 		if err != nil {
 			log.Printf("ERROR: %v", err)
 			continue
@@ -64,6 +72,7 @@ func main() {
 			log.Printf("ERROR: %v", err)
 			continue
 		}
+
 		var buf bytes.Buffer
 		zw := gzip.NewWriter(&buf)
 		_, err = zw.Write(body)
@@ -83,7 +92,7 @@ func main() {
 			continue
 		}
 
-		err = b.Upload(zr, src)
+		err = b.Upload(zr, msg.Path)
 		if err != nil {
 			log.Printf("ERROR: %v", err)
 			continue
@@ -94,5 +103,7 @@ func main() {
 			log.Printf("ERROR: %v", err)
 			continue
 		}
+
+		log.Printf("%s was proccesed with success!\n", msg.Filename)
 	}
 }

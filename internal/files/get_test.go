@@ -2,43 +2,43 @@ package files
 
 import (
 	"regexp"
-	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestGet(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Error(err.Error())
+func (ts *TransactionSuite) TestGet() {
+	tcs := []struct {
+		ID          int64
+		MockWithErr bool
+	}{
+		{1, false},
+		{300, true},
 	}
-	defer db.Close()
 
-	rows := sqlmock.NewRows([]string{
-		"id",
-		"folder_id",
-		"owner_id",
-		"name",
-		"type",
-		"path",
-		"created_at",
-		"modified_at",
-		"deleted",
-	}).
-		AddRow(1, "1", "1", "photo", ".png", "./", time.Now(), time.Now(), false)
+	for _, tc := range tcs {
+		setMockGet(ts.mock, tc.ID, tc.MockWithErr)
+
+		_, err := Get(ts.conn, tc.ID)
+		if tc.MockWithErr {
+			assert.Error(ts.T(), err)
+		} else {
+			assert.NoError(ts.T(), err)
+		}
+	}
+}
+
+func setMockGet(mock sqlmock.Sqlmock, id int64, err bool) {
+	rows := sqlmock.NewRows([]string{"id", "folder_id", "owner_id", "name", "type", "path", "created_at", "modified_at", "deleted"})
+
+	if err {
+		rows.AddRow(1, 1, 1, "Gopher.png", "image/png", "/", time.Now(), time.Now(), 10)
+	} else {
+		rows.AddRow(1, 1, 1, "Gopher.png", "image/png", "/", time.Now(), time.Now(), false)
+	}
 
 	mock.ExpectQuery(regexp.QuoteMeta(`select * from "files" where id = $1`)).
-		WithArgs(1).
+		WithArgs(id).
 		WillReturnRows(rows)
-
-	_, err = Get(db, 1)
-	if err != nil {
-		t.Error(err)
-	}
-
-	err = mock.ExpectationsWereMet()
-	if err != nil {
-		t.Error(err)
-	}
 }

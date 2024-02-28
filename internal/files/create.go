@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/charmingruby/backpago/internal/queue"
+	"gopkg.in/guregu/null.v4"
 )
 
 func (h *handler) Create(rw http.ResponseWriter, r *http.Request) {
@@ -27,27 +28,25 @@ func (h *handler) Create(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entity, err := New(
-		1,
-		fileHeader.Filename,
-		fileHeader.Header.Get("Content-Type"),
-		path,
-	)
+	userID := r.Context().Value("user_id").(int64)
+
+	entity, err := New(userID, fileHeader.Filename, fileHeader.Header.Get("Content-Type"), path)
 	if err != nil {
 		h.bucket.Delete(path)
+
 		http.Error(rw, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	folderId := r.Form.Get("folder_id")
-	if folderId != "" {
-		fid, err := strconv.Atoi(folderId)
+	folderID := r.Form.Get("folder_id")
+	if folderID != "" {
+		fid, err := strconv.Atoi(folderID)
 		if err != nil {
 			http.Error(rw, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		entity.FolderId = int64(fid)
+		entity.FolderID = null.IntFrom(int64(fid))
 	}
 
 	id, err := Insert(h.db, entity)
@@ -56,16 +55,17 @@ func (h *handler) Create(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entity.Id = id
+	entity.ID = id
 
 	dto := queue.QueueDto{
-		ID:       int(id),
 		Filename: fileHeader.Filename,
 		Path:     path,
+		ID:       int(id),
 	}
 
 	msg, err := dto.Marshal()
 	if err != nil {
+		// TODO: rollback
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -76,19 +76,18 @@ func (h *handler) Create(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rw.WriteHeader(http.StatusCreated)
 	rw.Header().Add("Content-Type", "application/json")
 	json.NewEncoder(rw).Encode(entity)
 }
 
-func Insert(db *sql.DB, f *File) (int64, error) {
-	stmt := `insert into "files" 
-	("folder_id", "owner_id", "name", "type", "path", "modified_at") 
-		VALUES ($1, $2, $3, $4, $5, $6)`
-
-	result, err := db.Exec(stmt, f.FolderId, f.OwnerId, f.Name, f.Type, f.Path, f.ModifiedAt)
+func Insert(db *sql.DB, f *File) (id int64, err error) {
+	stmt := `insert into "files" ("folder_id", "owner_id", "name", "type", "path", "modified_at") VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+	err = db.QueryRow(stmt, f.FolderID, f.OwnerID, f.Name,
+		f.Type, f.Path, f.ModifiedAt).Scan(&id)
 	if err != nil {
 		return -1, err
 	}
 
-	return result.LastInsertId()
+	return
 }

@@ -7,18 +7,20 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi"
 )
 
 func (h *handler) Modify(rw http.ResponseWriter, r *http.Request) {
 	f := new(Folder)
 
-	if err := json.NewDecoder(r.Body).Decode(f); err != nil {
+	err := json.NewDecoder(r.Body).Decode(f)
+	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if err := f.Validate(); err != nil {
+	err = f.Validate()
+	if err != nil {
 		http.Error(rw, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -29,12 +31,17 @@ func (h *handler) Modify(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := Update(h.db, int64(id), f); err != nil {
+	err = Update(h.db, int64(id), f)
+	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// TODO: GetFolder
+	f, err = GetFolder(h.db, int64(id))
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	rw.Header().Add("Content-Type", "application/json")
 	json.NewEncoder(rw).Encode(f)
@@ -45,9 +52,6 @@ func Update(db *sql.DB, id int64, f *Folder) error {
 
 	stmt := `update "folders" set name = $1, modified_at = $2 where id = $3`
 	_, err := db.Exec(stmt, f.Name, f.ModifiedAt, id)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }

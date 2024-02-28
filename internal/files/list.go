@@ -1,39 +1,36 @@
 package files
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 func List(db *sql.DB, folderID int64) ([]File, error) {
-	stmt := `select * from "files" where folder_id=$1 and deleted = false`
-	return selectAllFiles(db, stmt)
-}
-
-func ListRoot(db *sql.DB) ([]File, error) {
-	stmt := `select * from "files" where folder_id is null and deleted = false`
-	return selectAllFiles(db, stmt)
-}
-
-func selectAllFiles(db *sql.DB, stmt string) ([]File, error) {
-	rows, err := db.Query(stmt)
+	stmt := `select * from files where "folder_id" = $1 and "deleted"=false`
+	rows, err := db.Query(stmt, folderID)
 	if err != nil {
 		return nil, err
 	}
 
-	files := make([]File, 0)
+	return listFiles(rows), nil
+}
 
+func ListRoot(db *sql.DB) ([]File, error) {
+	stmt := `select * from files where "folder_id" is null and "deleted"=false`
+	rows, err := db.Query(stmt)
+	if err != nil {
+		return nil, err
+	}
+	return listFiles(rows), nil
+}
+
+func listFiles(rows *sql.Rows) []File {
+	files := make([]File, 0)
 	for rows.Next() {
 		var f File
 
-		err := rows.Scan(
-			&f.Id,
-			&f.FolderId,
-			&f.OwnerId,
-			&f.Name,
-			&f.Type,
-			&f.Path,
-			&f.CreatedAt,
-			&f.ModifiedAt,
-			&f.Deleted,
-		)
+		err := rows.Scan(&f.ID, &f.FolderID, &f.OwnerID,
+			&f.Name, &f.Type, &f.Path, &f.CreatedAt, &f.ModifiedAt,
+			&f.Deleted)
 		if err != nil {
 			continue
 		}
@@ -41,5 +38,5 @@ func selectAllFiles(db *sql.DB, stmt string) ([]File, error) {
 		files = append(files, f)
 	}
 
-	return files, nil
+	return files
 }

@@ -3,33 +3,17 @@ package folders
 import (
 	"errors"
 	"time"
+
+	"gopkg.in/guregu/null.v4"
 )
 
 var (
-	ErrNameRequired  = errors.New("name is required and can't be blank")
-	ErrNameMinLength = errors.New("name must be at least 2 characters")
-	ErrNameMaxLength = errors.New("name must be a maximum of 32 characters")
+	ErrNameRequired = errors.New("name is required")
 )
 
-func New(parentId int64, name string) (*Folder, error) {
-	f := Folder{
-		Name: name,
-	}
-
-	if parentId == -1 {
-		f.ParentId = parentId
-	}
-
-	if err := f.Validate(); err != nil {
-		return nil, err
-	}
-
-	return &f, nil
-}
-
 type Folder struct {
-	Id         int64     `json:"id"`
-	ParentId   int64     `json:"parent_id"`
+	ID         int64     `json:"id"`
+	ParentID   null.Int  `json:"parent_id"`
 	Name       string    `json:"name"`
 	CreatedAt  time.Time `json:"created_at"`
 	ModifiedAt time.Time `json:"modified_at"`
@@ -39,14 +23,6 @@ type Folder struct {
 func (f *Folder) Validate() error {
 	if f.Name == "" {
 		return ErrNameRequired
-	}
-
-	if len(f.Name) < 2 {
-		return ErrNameMinLength
-	}
-
-	if len(f.Name) > 32 {
-		return ErrNameMaxLength
 	}
 
 	return nil

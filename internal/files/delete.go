@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi"
 )
 
 func (h *handler) Delete(rw http.ResponseWriter, r *http.Request) {
@@ -22,12 +22,12 @@ func (h *handler) Delete(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rw.WriteHeader(http.StatusNoContent)
 	rw.Header().Add("Content-Type", "application/json")
 }
 
 func Delete(db *sql.DB, id int64) error {
-	stmt := `update "files" set "modified_at"=$1, deleted=true, where id=$2`
-
+	stmt := `update "files" set "modified_at"=$1, deleted=true where id=$2`
 	_, err := db.Exec(stmt, time.Now(), id)
 
 	return err

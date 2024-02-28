@@ -9,7 +9,6 @@ import (
 )
 
 func (h *handler) List(rw http.ResponseWriter, r *http.Request) {
-
 	c, err := GetRootFolderContent(h.db)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
@@ -18,19 +17,16 @@ func (h *handler) List(rw http.ResponseWriter, r *http.Request) {
 
 	fc := FolderContent{
 		Folder: Folder{
-			Name: "root",
+			Name: "Root",
 		},
-		Content: c,
-	}
+		Content: c}
 
 	rw.Header().Add("Content-Type", "application/json")
 	json.NewEncoder(rw).Encode(fc)
-
 }
 
 func getRootSubFolders(db *sql.DB) ([]Folder, error) {
 	stmt := `select * from "folders" where "parent_id" is null and "deleted"=false`
-
 	rows, err := db.Query(stmt)
 	if err != nil {
 		return nil, err
@@ -39,20 +35,13 @@ func getRootSubFolders(db *sql.DB) ([]Folder, error) {
 	f := make([]Folder, 0)
 	for rows.Next() {
 		var folder Folder
-		err = rows.Scan(
-			&folder.Id,
-			&folder.ParentId,
-			&folder.Name,
-			&folder.CreatedAt,
-			&folder.ModifiedAt,
-			&folder.Deleted,
-		)
+		err := rows.Scan(&folder.ID, &folder.ParentID, &folder.Name,
+			&folder.CreatedAt, &folder.ModifiedAt, &folder.Deleted)
 		if err != nil {
 			continue
 		}
 
 		f = append(f, folder)
-
 	}
 
 	return f, nil
@@ -67,7 +56,7 @@ func GetRootFolderContent(db *sql.DB) ([]FolderResource, error) {
 	fr := make([]FolderResource, 0, len(subfolders))
 	for _, sf := range subfolders {
 		r := FolderResource{
-			ID:         sf.Id,
+			ID:         sf.ID,
 			Name:       sf.Name,
 			Type:       "directory",
 			CreatedAt:  sf.CreatedAt,
@@ -84,7 +73,7 @@ func GetRootFolderContent(db *sql.DB) ([]FolderResource, error) {
 
 	for _, f := range folderFiles {
 		r := FolderResource{
-			ID:         f.Id,
+			ID:         f.ID,
 			Name:       f.Name,
 			Type:       f.Type,
 			CreatedAt:  f.CreatedAt,

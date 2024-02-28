@@ -10,15 +10,16 @@ import (
 type RabbitMQConfig struct {
 	URL       string
 	TopicName string
-	TimeOut   time.Duration
+	Timeout   time.Duration
 }
 
 func newRabbitConn(cfg RabbitMQConfig) (rc *RabbitConnection, err error) {
-	rc.cfg = cfg
+	rc = &RabbitConnection{
+		cfg: cfg,
+	}
+	rc.conn, err = amqp.Dial(cfg.URL)
 
-	rc.conn, _ = amqp.Dial(cfg.URL)
-
-	return rc, nil
+	return rc, err
 }
 
 type RabbitConnection struct {
@@ -28,7 +29,6 @@ type RabbitConnection struct {
 
 func (rc *RabbitConnection) Publish(msg []byte) error {
 	c, err := rc.conn.Channel()
-
 	if err != nil {
 		return err
 	}
@@ -40,18 +40,15 @@ func (rc *RabbitConnection) Publish(msg []byte) error {
 		Body:         msg,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), rc.cfg.TimeOut)
-
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	return c.PublishWithContext(
-		ctx,
+	return c.PublishWithContext(ctx,
 		"",
 		rc.cfg.TopicName,
 		false,
 		false,
-		mp,
-	)
+		mp)
 }
 
 func (rc *RabbitConnection) Consume(cdto chan<- QueueDto) error {

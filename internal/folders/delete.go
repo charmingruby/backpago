@@ -7,11 +7,10 @@ import (
 	"time"
 
 	"github.com/charmingruby/backpago/internal/files"
-	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi"
 )
 
 func (h *handler) Delete(rw http.ResponseWriter, r *http.Request) {
-
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
@@ -30,8 +29,8 @@ func (h *handler) Delete(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rw.WriteHeader(http.StatusNoContent)
 	rw.Header().Add("Content-Type", "application/json")
-
 }
 
 func deleteFolderContent(db *sql.DB, folderID int64) error {
@@ -50,16 +49,15 @@ func deleteSubfolders(db *sql.DB, folderID int64) error {
 	}
 
 	removedFolders := make([]Folder, 0, len(subfolders))
-
 	for _, sf := range subfolders {
-		err := Delete(db, sf.Id)
+		err := Delete(db, sf.ID)
 		if err != nil {
 			break
 		}
 
-		err = deleteFolderContent(db, sf.Id)
+		err = deleteFolderContent(db, sf.ID)
 		if err != nil {
-			Update(db, sf.Id, &sf)
+			Update(db, sf.ID, &sf)
 			break
 		}
 
@@ -68,8 +66,7 @@ func deleteSubfolders(db *sql.DB, folderID int64) error {
 
 	if len(subfolders) != len(removedFolders) {
 		for _, rf := range removedFolders {
-			Update(db, rf.Id, &rf)
-
+			Update(db, rf.ID, &rf)
 		}
 	}
 
@@ -77,16 +74,15 @@ func deleteSubfolders(db *sql.DB, folderID int64) error {
 }
 
 func deleteFiles(db *sql.DB, folderID int64) error {
-	f, err := files.List(db, int64(folderID))
+	f, err := files.List(db, folderID)
 	if err != nil {
 		return err
 	}
 
 	removedFiles := make([]files.File, 0, len(f))
-
 	for _, file := range f {
 		file.Deleted = true
-		err = files.Update(db, file.Id, &file)
+		err = files.Update(db, file.ID, &file)
 		if err != nil {
 			break
 		}
@@ -97,7 +93,7 @@ func deleteFiles(db *sql.DB, folderID int64) error {
 	if len(f) != len(removedFiles) {
 		for _, file := range removedFiles {
 			file.Deleted = false
-			files.Update(db, int64(folderID), &file)
+			files.Update(db, file.ID, &file)
 		}
 
 		return err
@@ -111,5 +107,4 @@ func Delete(db *sql.DB, id int64) error {
 	_, err := db.Exec(stmt, time.Now(), id)
 
 	return err
-
 }

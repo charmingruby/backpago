@@ -10,7 +10,6 @@ type QueueDto struct {
 
 func (q *QueueDto) Marshal() ([]byte, error) {
 	return json.Marshal(q)
-
 }
 
 func (q *QueueDto) Unmarshal(data []byte) error {

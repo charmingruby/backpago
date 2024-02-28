@@ -3,19 +3,29 @@ package users
 import (
 	"database/sql"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/charmingruby/backpago/internal/auth"
+	"github.com/go-chi/chi"
 )
+
+var gh handler
 
 type handler struct {
 	db *sql.DB
 }
 
 func SetRoutes(r chi.Router, db *sql.DB) {
-	h := handler{db}
+	gh = handler{db}
 
-	r.Get("/", h.List)
-	r.Get("/{id}", h.GetById)
-	r.Post("/sign-up", h.Create)
-	r.Put("/{id}", h.Modify)
-	r.Put("/{id}", h.Delete)
+	r.Route("/users", func(r chi.Router) {
+		r.Post("/", gh.Create)
+
+		r.Group(func(r chi.Router) {
+			r.Use(auth.Validate)
+
+			r.Put("/{id}", gh.Modify)
+			r.Delete("/{id}", gh.Delete)
+			r.Get("/{id}", gh.GetByID)
+			r.Get("/", gh.List)
+		})
+	})
 }

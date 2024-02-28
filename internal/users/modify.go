@@ -7,13 +7,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi"
 )
 
 func (h *handler) Modify(rw http.ResponseWriter, r *http.Request) {
 	u := new(User)
 
-	if err := json.NewDecoder(r.Body).Decode(u); err != nil {
+	err := json.NewDecoder(r.Body).Decode(u)
+	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -35,19 +36,21 @@ func (h *handler) Modify(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: GET ID
+	u, err = Get(h.db, int64(id))
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	rw.Header().Add("Content-Type", "application/json")
 	json.NewEncoder(rw).Encode(u)
-
 }
 
 func Update(db *sql.DB, id int64, u *User) error {
 	u.ModifiedAt = time.Now()
 
-	stmt := `update "users" set "name"=$1, "modified_at"=$2 where id=$3`
-
-	_, err := db.Exec(stmt, u.Name, u.ModifiedAt, id)
+	stmt := `update "users" set "name"=$1, "modified_at"=$2, "last_login"=$3 where id=$4`
+	_, err := db.Exec(stmt, u.Name, u.ModifiedAt, u.LastLogin, id)
 
 	return err
 }
